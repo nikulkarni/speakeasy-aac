@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SpeakEasy — hands-free communication</title>
+<style>
+  :root{
+    --bg:#101418; --surface:#1a2028; --surface-2:#222b35; --line:#33404d;
+    --ink:#f2f6fa; --muted:#9fb0bf; --dwell:#28c2a0; --accent:#6aa8ff; --predict:#b48cff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;}
+  .wrap{max-width:720px;margin:0 auto;padding:56px 22px 72px;}
+  h1{font-size:34px;margin:0 0 6px;letter-spacing:.2px;}
+  .tag{color:var(--muted);font-size:17px;line-height:1.6;margin:0 0 34px;}
+  .card{display:block;text-decoration:none;color:inherit;background:var(--surface);
+    border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin-bottom:14px;
+    transition:border-color .15s, transform .15s;}
+  .card:hover{border-color:var(--accent);transform:translateY(-2px);}
+  .card h2{margin:0 0 4px;font-size:20px;}
+  .card h2 .v{color:var(--accent);font-variant-numeric:tabular-nums;}
+  .card p{margin:0;color:var(--muted);font-size:15px;line-height:1.55;}
+  .card .adds{color:var(--predict);}
+  .note{margin-top:30px;padding:16px 18px;background:var(--surface-2);border:1px solid var(--line);
+    border-radius:12px;color:var(--muted);font-size:14px;line-height:1.6;}
+  .note b{color:var(--ink);}
+  footer{margin-top:26px;color:var(--muted);font-size:13px;line-height:1.6;}
+  a.inline{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SpeakEasy</h1>
+  <p class="tag">A free app that lets people who can't use their hands or voice speak — just by moving
+     their face in front of a camera. Everything runs on your device; no video is ever uploaded or saved.</p>
+
+  <a class="card" href="v3/">
+    <h2>Version <span class="v">3</span> — full prototype <span style="color:var(--dwell)">· recommended</span></h2>
+    <p>Head-pointer typing, word prediction, and <span class="adds">scanning mode</span> — a blink-only
+       (or Space-key) path for users who can't control head or gaze.</p>
+  </a>
+
+  <a class="card" href="v2/">
+    <h2>Version <span class="v">2</span> — with word prediction</h2>
+    <p>The nose-tracking keyboard plus <span class="adds">word suggestions</span> that cut how many
+       selections it takes to type.</p>
+  </a>
+
+  <a class="card" href="v1/">
+    <h2>Version <span class="v">1</span> — nose-tracking keyboard</h2>
+    <p>The original prototype: move your head to point, dwell or blink to select, and speak aloud.</p>
+  </a>
+
+  <div class="note">
+    <b>To use:</b> open a version, click “Turn on camera &amp; start,” and allow camera access. Look
+    straight ahead and press <b>Recenter</b>, then move your head to drive the cursor. Works best in
+    <b>Chrome</b>, in decent lighting. On a phone or tablet, hold the device steady or prop it up.
+  </div>
+
+  <footer>
+    Built for the Congressional App Challenge. Face tracking by
+    <a class="inline" href="https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker">MediaPipe Face Landmarker</a>;
+    speech by the browser’s Web Speech API. Open source — see the repository README.
+  </footer>
+</div>
+</body>
+</html>
