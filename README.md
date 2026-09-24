@@ -13,9 +13,16 @@ _(fill this in once GitHub Pages is enabled — see below)_
 
 | | Version | What it adds |
 |---|---|---|
-| [`/v3`](v3/) | **v3 — full prototype (recommended)** | Row–column **scanning mode**: highlight a row, blink (or press Space) to pick it, then scan the letters — a single-switch path for users who can't control head or gaze |
-| [`/v2`](v2/) | **v2 — word prediction** | A prediction row (backed by a trie) suggests word completions to cut the number of selections |
+| [`/v5`](v5/) | **v5 — command board (recommended)** | Speaks **whole commands in 1–2 selections** — smart-home control ("Alexa, turn on the AC"), urgent needs, and calls — for people for whom spelling is too slow. Selectable wake word (Alexa / Google / Siri) |
+| [`/v4`](v4/) | **v4 — keyboard + phrases** | Free-text typing with word + next-word prediction and a quick phrase board (the spelling fallback) |
+| [`/v3`](v3/) | **v3 — scanning mode** | Row–column **scanning** with a selectable switch (eyebrow raise, mouth open, blink, or Space) |
+| [`/v2`](v2/) | **v2 — word prediction** | A prediction row (backed by a trie) suggests word completions |
 | [`/v1`](v1/) | **v1 — nose-tracking keyboard** | Head-pointer cursor, dwell-to-select, blink-to-select, and text-to-speech |
+
+**How the command board speaks to a voice assistant:** it says the command out loud (e.g., "Alexa,
+turn on the air conditioner"). A nearby Echo/Nest/HomePod hears it and acts — no cloud API, account,
+or internet link required, and nothing is uploaded. Edit the `MENU` list near the top of
+`v5/index.html` to customise commands and contact names.
 
 Each version is a single self-contained HTML file (`vN/index.html`). Later versions include
 everything from the earlier ones.
