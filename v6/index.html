@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SpeakEasy — listen mode</title>
+<style>
+  :root{
+    --bg:#101418; --surface:#1a2028; --surface-2:#222b35; --line:#33404d;
+    --ink:#f2f6fa; --muted:#9fb0bf; --focus:#ffd166; --dwell:#28c2a0;
+    --accent:#6aa8ff; --danger:#ff6b6b; --home:#7fd1a8; --predict:#b48cff; --radius:16px;
+  }
+  body.hc{ --bg:#000; --surface:#000; --surface-2:#000; --line:#fff;
+    --ink:#fff; --muted:#fff; --focus:#ffec3d; --dwell:#00e5a0; --accent:#7fb2ff; --home:#8effc0; --predict:#d0b3ff; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;overflow:hidden;}
+  body{display:flex;flex-direction:column;}
+
+  .bar{display:flex;align-items:center;gap:12px;padding:12px 18px;
+    background:var(--surface);border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .bar h1{font-size:17px;margin:0;font-weight:700;}
+  .status{font-size:13px;color:var(--muted);} .status b{color:var(--dwell);}
+  .spacer{flex:1;}
+  button.ctrl,a.ctrl{text-decoration:none;font:inherit;font-size:14px;font-weight:600;border-radius:10px;
+    border:1px solid var(--line);background:var(--surface-2);color:var(--ink);padding:10px 16px;cursor:pointer;}
+  button.ctrl:hover,a.ctrl:hover{border-color:var(--accent);}
+  button.ctrl.primary{background:var(--accent);color:#06121f;border-color:var(--accent);}
+
+  .screen{padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--line);}
+  .said{min-height:40px;font-size:22px;font-weight:600;color:var(--dwell);}
+  .said:empty::before{content:"Listen for the option you want, then select it — it will be spoken aloud";
+    color:var(--muted);font-weight:400;font-size:17px;}
+
+  .board{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;justify-content:center;}
+  .row{display:flex;gap:12px;justify-content:center;}
+  .key{position:relative;flex:1;min-width:0;height:clamp(60px,11vh,112px);
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    background:var(--surface-2);border:2px solid var(--line);border-radius:var(--radius);color:var(--ink);
+    font:inherit;font-size:clamp(16px,2.6vh,25px);font-weight:700;user-select:none;overflow:hidden;padding:8px 12px;line-height:1.2;cursor:pointer;}
+  .key .fill{position:absolute;left:0;bottom:0;width:100%;height:0%;
+    background:var(--dwell);opacity:.85;z-index:0;transition:height .05s linear;}
+  .key .glyph{position:relative;z-index:1;}
+  .key.focus{border-color:var(--focus);box-shadow:0 0 0 3px rgba(255,209,102,.35);}
+  .key.cat{color:var(--home);} .key.back{color:var(--muted);font-size:clamp(15px,2.3vh,20px);}
+  .key.type{color:var(--predict);}
+  .said .caret{color:var(--accent);animation:blink 1s step-end infinite;}
+  .said .hint{color:var(--muted);font-weight:400;font-size:17px;}
+  @keyframes blink{50%{opacity:0;}}
+
+  /* Keyboard view: five rows (suggestions, three letter rows, actions), so keys are shorter */
+  .board.kbd{gap:8px;} .board.kbd .row{gap:8px;}
+  .board.kbd .key{height:clamp(46px,10vh,86px);font-size:clamp(18px,3vh,28px);padding:4px 6px;}
+  .board.kbd .key.act{font-size:clamp(13px,2.1vh,18px);letter-spacing:.4px;}
+  .board.kbd .key.speak{color:var(--dwell);} .board.kbd .key.danger{color:var(--danger);}
+  .board.kbd .row:last-child{padding-right:160px;}   /* keep actions clear of the camera preview */
+  .board.kbd .key.pred{color:var(--predict);border-style:dashed;font-size:clamp(15px,2.4vh,21px);}
+
+  #cursor{position:fixed;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;
+    background:rgba(106,168,255,.25);border:2px solid var(--accent);z-index:60;pointer-events:none;
+    box-shadow:0 0 12px rgba(106,168,255,.5);display:none;}
+  #cursor svg{position:absolute;inset:-6px;transform:rotate(-90deg);}
+  #cursor circle{fill:none;stroke:var(--dwell);stroke-width:4;stroke-linecap:round;}
+  #cam{position:fixed;right:14px;bottom:14px;width:150px;border-radius:12px;
+    border:1px solid var(--line);transform:scaleX(-1);z-index:40;background:#000;opacity:.9;}
+  #cam.hidden{display:none;}
+
+  .panel{position:fixed;inset:0;background:rgba(8,11,15,.92);display:flex;
+    align-items:center;justify-content:center;padding:24px;z-index:80;}
+  .panel .card{width:min(560px,100%);background:var(--surface);border:1px solid var(--line);
+    border-radius:20px;padding:28px 30px;max-height:calc(100vh - 48px);overflow:auto;}
+  .card h2{margin:0 0 8px;font-size:22px;} .card p{color:var(--muted);font-size:15px;line-height:1.6;margin:0 0 18px;}
+  #startPanel{cursor:pointer;}
+  #startBtn{width:100%;font-size:22px;padding:22px 16px;}
+  .setting{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid var(--line);}
+  .setting:first-of-type{border-top:none;} .setting label{font-size:15px;font-weight:600;}
+  .setting .val{color:var(--dwell);font-variant-numeric:tabular-nums;min-width:56px;text-align:right;}
+  select,input[type=range]{accent-color:var(--accent);}
+  select{font:inherit;font-size:14px;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;max-width:240px;}
+  input[type=range]{width:200px;} input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);}
+  .row-btns{display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;} .hidden{display:none!important;}
+  .err{color:var(--danger);font-size:14px;margin-top:12px;}
+  .card h3{margin:22px 0 4px;padding-top:18px;border-top:1px solid var(--line);font-size:17px;}
+  .card p.small{font-size:14px;margin:0 0 10px;}
+  .field{padding:8px 0;} .field label{display:block;font-size:14px;font-weight:600;margin-bottom:6px;}
+  textarea{width:100%;font:inherit;font-size:15px;background:var(--surface-2);color:var(--ink);
+    border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;}
+</style>
+</head>
+<body>
+
+<div class="panel" id="startPanel">
+  <div class="card" role="dialog" aria-labelledby="startTitle" aria-describedby="startDesc">
+    <h2 id="startTitle">SpeakEasy — listen mode</h2>
+    <p id="startDesc">For people who can’t see the screen. SpeakEasy reads each option aloud in a quick,
+       quiet voice. When you hear the one you want, select it by raising your eyebrows, or with any key or
+       switch, and it is spoken out loud: to a person, or to a nearby voice assistant (“Alexa, what time is it?”).
+       Spoken instructions help you get in front of the camera and set up your switch. Everything runs on your device.</p>
+    <button class="ctrl primary" id="startBtn" autofocus>Start — press any key or tap anywhere</button>
+    <div class="err hidden" id="startErr" role="alert"></div>
+  </div>
+</div>
+
+<div class="panel hidden" id="settingsPanel">
+  <div class="card" role="dialog" aria-label="Settings">
+    <h2>Settings</h2>
+
+    <h3 style="margin-top:8px;border-top:none;padding-top:0;">Listening</h3>
+    <div class="setting"><label for="listenChk">Listen mode (read each option aloud)</label><input type="checkbox" id="listenChk"></div>
+    <div class="setting"><label for="earChk">Sound effects</label><input type="checkbox" id="earChk"></div>
+    <div class="setting"><label for="guideChk">Spoken camera guidance</label><input type="checkbox" id="guideChk"></div>
+    <div class="setting"><label for="cueVoiceSel">Cue voice (reads options)</label><select id="cueVoiceSel"></select></div>
+    <div class="setting"><label for="cueRate">Cue voice speed</label>
+      <input type="range" id="cueRate" min="0.8" max="2.2" step="0.1"><span class="val" id="cueRateVal"></span></div>
+    <div class="setting"><label for="talkVoiceSel">Speaking voice (says the message)</label><select id="talkVoiceSel"></select></div>
+    <p class="small">The cue voice is quicker and quieter than the speaking voice, so the person can tell an option
+       apart from a message meant for the room. Volume differences work in Chrome on a computer; iPhones and iPads ignore them,
+       so pick a different cue voice there.</p>
+
+    <h3>Switches</h3>
+    <div class="setting"><label for="scanChk">Scanning mode</label><input type="checkbox" id="scanChk"></div>
+    <div class="setting"><label for="modeSel">Switch setup</label>
+      <select id="modeSel">
+        <option value="one">One switch — options move on by themselves</option>
+        <option value="two">Two switches — one moves, one selects</option>
+      </select></div>
+    <div class="setting"><label for="scanSwitch">Select switch</label>
+      <select id="scanSwitch">
+        <option value="brow">Eyebrow raise</option>
+        <option value="mouth">Mouth open</option>
+        <option value="blink">Close eyes</option>
+        <option value="keys">Key or physical switch only (no camera)</option>
+      </select></div>
+    <div class="setting"><label for="stepSwitch">Move switch (two-switch setup)</label>
+      <select id="stepSwitch">
+        <option value="keys">Key or physical switch only</option>
+        <option value="mouth">Mouth open</option>
+        <option value="brow">Eyebrow raise</option>
+        <option value="blink">Close eyes</option>
+      </select></div>
+    <p class="small">Keys: in one-switch setup any key selects. In two-switch setup, Space or an arrow key moves and Enter
+       selects. Escape goes back to the main menu. Most Bluetooth switches send Space or Enter.</p>
+    <div class="setting"><label for="scanRange">Wait after each option</label>
+      <input type="range" id="scanRange" min="300" max="3000" step="100"><span class="val" id="scanRangeVal"></span></div>
+    <div class="setting"><label for="afterMsgSel">After a message is spoken</label>
+      <select id="afterMsgSel">
+        <option value="wait">Wait until I press my switch</option>
+        <option value="3000">Start again after 3 seconds</option>
+        <option value="5000">Start again after 5 seconds</option>
+        <option value="10000">Start again after 10 seconds</option>
+      </select></div>
+    <div class="row-btns" style="margin-top:4px;"><button class="ctrl" id="calibBtnSettings">Set up face switch (spoken)</button></div>
+
+    <h3>Pointer (for sighted users)</h3>
+    <div class="setting"><label for="dwellRange">Hold time to select</label>
+      <input type="range" id="dwellRange" min="500" max="2500" step="100"><span class="val" id="dwellRangeVal"></span></div>
+    <div class="setting"><label for="sensRange">Head sensitivity</label>
+      <input type="range" id="sensRange" min="1.5" max="6" step="0.5"><span class="val" id="sensRangeVal"></span></div>
+    <div class="setting"><label for="blinkChk">Blink to select (pointer mode only)</label><input type="checkbox" id="blinkChk"></div>
+
+    <h3>Other</h3>
+    <div class="setting"><label for="wakeSel">Voice assistant wake word</label>
+      <select id="wakeSel">
+        <option value="alexa">“Alexa,”</option>
+        <option value="google">“Hey Google,”</option>
+        <option value="siri">“Hey Siri,”</option>
+        <option value="none">None (speak to a person)</option>
+      </select></div>
+    <div class="setting"><label for="hcChk">High contrast</label><input type="checkbox" id="hcChk"></div>
+
+    <h3>Personal words</h3>
+    <p class="small">For a caregiver to fill in once. Names become “Call …” options under <b>People</b>;
+       phrases, places and medicines get their own <b>My words</b> category; and all of them are suggested
+       first on the keyboard. Separate with commas or new lines. Saved only on this device (shared with v5).</p>
+    <div class="field"><label for="pfNames">Names — family, caregivers, doctors, pets</label>
+      <textarea id="pfNames" rows="2" placeholder="e.g. Priya, Dr. Patel, Nurse Maria"></textarea></div>
+    <div class="field"><label for="pfMeds">Medicines &amp; conditions</label>
+      <textarea id="pfMeds" rows="2" placeholder="e.g. Metformin, Lisinopril, arthritis"></textarea></div>
+    <div class="field"><label for="pfPlaces">Places</label>
+      <textarea id="pfPlaces" rows="2" placeholder="e.g. Oakwood Pharmacy, St. Mary's Hospital"></textarea></div>
+    <div class="field"><label for="pfPhrases">Favourite phrases (one per line)</label>
+      <textarea id="pfPhrases" rows="4"></textarea></div>
+    <div class="row-btns" style="margin-top:12px;">
+      <button class="ctrl" id="clearProfileBtn">Clear personal words &amp; typing history</button>
+    </div>
+
+    <div class="row-btns">
+      <button class="ctrl" id="recalibBtn">Recenter head position</button>
+      <button class="ctrl primary" id="closeSettings">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="bar">
+  <h1>SpeakEasy <span style="font-size:12px;font-weight:600;color:var(--muted);vertical-align:middle;">v6</span></h1>
+  <span class="status" id="status">Ready</span>
+  <div class="spacer"></div>
+  <a class="ctrl" href="../" title="Back to the list of all SpeakEasy versions">&#8962; All versions</a>
+  <button class="ctrl" id="calibBtn">Recenter</button>
+  <button class="ctrl" id="settingsBtn">Settings</button>
+</div>
+
+<div class="screen"><div class="said" id="said" role="status" aria-live="polite"></div></div>
+<div class="board" id="board"></div>
+
+<div id="cursor"><svg viewBox="0 0 26 26"><circle id="ring" cx="13" cy="13" r="15" pathLength="100"
+  stroke-dasharray="100" stroke-dashoffset="100"></circle></svg></div>
+<video id="cam" playsinline muted class="hidden"></video>
+
+<script type="module">
+import { FaceLandmarker, FilesetResolver }
+  from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10/vision_bundle.mjs";
+
+/* ============ Commands ============
+   Each item is [button label, spoken text]. In an "assistant" category the wake
+   word is added when spoken, so "what time is it" becomes "Alexa, what time is it"
+   — and the assistant speaks the answer back, which is what makes it useful to
+   someone who can't see a screen. Edit these lists to match a real person's needs. */
+const WAKE = { alexa:"Alexa,", google:"Hey Google,", siri:"Hey Siri,", none:"" };
+const MENU = {
+  home:   { title:"Home and devices", assistant:true, items:[
+    ["Turn on the AC","turn on the air conditioner"], ["Turn off the AC","turn off the air conditioner"],
+    ["Lights on","turn on the lights"], ["Lights off","turn off the lights"],
+    ["Play music","play some music"], ["Stop","stop"], ["Volume up","volume up"], ["Volume down","volume down"],
+    ["Set 10-min timer","set a timer for ten minutes"] ]},
+  ask:    { title:"Ask", assistant:true, items:[
+    ["What time is it?","what time is it"], ["Today's date","what's today's date"],
+    ["Weather","what's the weather today"], ["Read my messages","read my messages"],
+    ["Play the news","play the news"], ["Find my phone","find my phone"] ]},
+  needs:  { title:"Needs", assistant:false, items:[
+    ["I need help","I need help."], ["I'm in pain","I am in pain."],
+    ["I'm thirsty","I am thirsty."], ["I'm hungry","I am hungry."],
+    ["Bathroom","I need to use the bathroom."], ["Too hot","I am too hot."],
+    ["Too cold","I am too cold."], ["Reposition me","Please help me reposition."],
+    ["Guide me","Please guide me. Can I take your arm?"], ["Read this to me","Can you read this to me?"] ]},
+  people: { title:"People", assistant:true, items:[
+    ["Call Mom","call Mom"], ["Call Dad","call Dad"],
+    ["Call the nurse","call the nurse"], ["Call my caregiver","call my caregiver"] ]},
+  talk:   { title:"Talk", assistant:false, items:[
+    ["Yes","Yes."], ["No","No."], ["Thank you","Thank you."],
+    ["Please wait","Please wait."], ["Hello","Hello."], ["Goodbye","Goodbye."],
+    ["Who's there?","Who's there?"], ["What's around me?","Can you tell me what's around me?"] ]},
+};
+
+/* ============ Typing: word prediction (a trie, as in v5) ============ */
+class Trie{
+  constructor(){ this.root = {children:{}, end:false, weight:0, display:""}; }
+  insert(key, weight, display=key){
+    let node = this.root;
+    for(const ch of key) node = node.children[ch] || (node.children[ch] = {children:{}, end:false, weight:0, display:""});
+    if(!node.end || weight >= node.weight){ node.weight = weight; node.display = display; }
+    node.end = true;
+  }
+  suggest(prefix, k){
+    let node = this.root;
+    for(const ch of prefix){ node = node.children[ch]; if(!node) return []; }
+    const out = [];
+    (function dfs(n){ if(n.end) out.push([n.display, n.weight]);
+      for(const ch in n.children) dfs(n.children[ch]); })(node);
+    return out.sort((a,b)=>b[1]-a[1]).slice(0,k).map(x=>x[0]);
+  }
+}
+const WORDS = ("the be to of and a in that have i it for not on with he as you do at this but his by from " +
+"they we say her she or an will my one all would there their what so up out if about who get which go me " +
+"when make can like time no just him know take people into year your good some could them see other than " +
+"then now look only come its over think also back after use two how our work first well way even new want " +
+"because any these give day most us is are was water food help please yes thank need want more stop go " +
+"hello goodbye home eat drink bathroom pain tired happy family friend doctor nurse phone call love okay " +
+"morning night today tomorrow cold hot hungry thirsty sit stand walk open close light music read write " +
+"medicine pills blanket pillow glasses tv television bed chair wheelchair dizzy sick sleep rest visit " +
+"daughter son wife husband grandson granddaughter sister brother breakfast lunch dinner tea coffee " +
+"cane guide dog arm door left right where here there find lost").split(/\s+/);
+const BIGRAMS = {
+  "i":["am","need","want","would","have","feel"], "am":["not","hungry","tired","okay","happy","cold"],
+  "need":["help","to","my","water","the","some"], "want":["to","water","food","help","some","a"],
+  "would":["like","you"], "like":["to","some","a","water"], "feel":["tired","cold","hot","sick","dizzy","okay"],
+  "to":["go","eat","drink","the","see","sleep"], "the":["bathroom","doctor","nurse","phone","door"],
+  "please":["help","call","wait","come","guide"], "can":["you","i"], "you":["are","can"],
+  "help":["me","please"], "go":["to","home"], "my":["medicine","cane","family","phone"], "is":["it","the"],
+  "call":["my","the"], "good":["morning","night"], "thank":["you"], "where":["is","are"]
+};
+const STARTERS = ["I","please","yes","no","thank","hello"];
+const W_PERSONAL = 1e6, W_LEARNED = 1e4;   // common words weigh < 300
+
+// Personal profile, filled in by a caregiver in Settings. Stored only in this browser
+// (shared with v5, so a profile set up there carries over).
+const PROFILE_KEY = "speakeasy.profile", LEARNED_KEY = "speakeasy.learned", SETTINGS_KEY = "speakeasy.v6.settings";
+const EXAMPLE_PROFILE = { names:"", meds:"", places:"", phrases:[
+  "Can you call my family?", "My medicine is due.", "I would like to rest now.",
+  "Please turn on the TV.", "Can you help me to the bathroom?", "I don't feel well."].join("\n") };
+function load(key, fallback){ try{ return JSON.parse(localStorage.getItem(key)) || fallback; }catch{ return fallback; } }
+function save(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch{} }
+let profile = load(PROFILE_KEY, EXAMPLE_PROFILE);
+let learned = load(LEARNED_KEY, {});          // { word: times spoken }
+let phrases = [];
+let trie;
+const splitList = s => (s || "").split(/[,\n]+/).map(x=>x.trim()).filter(Boolean);
+function buildTrie(){
+  trie = new Trie();
+  WORDS.forEach((w,i)=> trie.insert(w, WORDS.length - i));
+  trie.insert("i", WORDS.length + 1, "I");
+  for(const w in learned) trie.insert(w, W_LEARNED + learned[w]);
+  [...splitList(profile.names), ...splitList(profile.meds), ...splitList(profile.places)].forEach(entry=>{
+    trie.insert(entry.toLowerCase(), W_PERSONAL, entry);            // "dr. patel" → "Dr. Patel"
+    const parts = entry.split(/\s+/);
+    if(parts.length > 1) parts.forEach(p=> trie.insert(p.toLowerCase(), W_PERSONAL - 1, p)); // "patel" → "Patel"
+  });
+  phrases = (profile.phrases || "").split("\n").map(x=>x.trim()).filter(Boolean);
+}
+function learnFrom(t){
+  (t.toLowerCase().match(/[a-z']{2,}/g) || []).forEach(w=>{
+    learned[w] = (learned[w] || 0) + 1; trie.insert(w, W_LEARNED + learned[w]);
+  });
+  save(LEARNED_KEY, learned);
+}
+buildTrie();
+
+/* ============ Settings (saved on this device, so a sighted helper sets them up once) ============ */
+const DEFAULTS = { wake:'alexa', dwellMs:1000, sens:3.5, blink:true, scanning:true, scanMs:800,
+  scanSwitch:'brow', switchMode:'one', stepSwitch:'keys',
+  listen:true, earcons:true, guide:true, afterMsg:'wait', cueRate:1.4, cueVoice:'', talkVoice:'', hc:false,
+  cal:{} };   // cal: per-gesture thresholds from spoken calibration, e.g. { brow:{on:.42, off:.25} }
+const cfg = Object.assign({}, DEFAULTS, load(SETTINGS_KEY, {}));
+const saveCfg = ()=> save(SETTINGS_KEY, cfg);
+const isFace = kind => kind === "brow" || kind === "mouth" || kind === "blink";
+const faceSwitchInUse = ()=> isFace(cfg.scanSwitch) || (cfg.switchMode === "two" && isFace(cfg.stepSwitch));
+const cameraNeeded = ()=> !cfg.scanning || faceSwitchInUse();
+const GESTURE = { brow:"raise your eyebrows", mouth:"open your mouth", blink:"close your eyes", keys:"press any key" };
+
+const state = { centerX:0.5, centerY:0.5, smoothX:0.5, smoothY:0.5,
+  focusKey:null, dwellElapsed:0, lastCommit:0, lastTs:0, landmarker:null, running:false, lastCats:null };
+let view = "menu";
+let keys = [];
+let buildCount = 0;
+let lastSaid = "", msgCount = 0;
+
+/* ============ Speech: a cue voice for options, a speaking voice for messages ============
+   Only one utterance plays at a time. `speaking` is "cue", "msg" or null; scanning
+   waits while anything is speaking, so each option is heard in full before the next.
+   A fallback timer covers browsers that sometimes never fire `onend`. */
+const hasTTS = "speechSynthesis" in window;
+let voices = [];
+let speaking = null, speechToken = 0, liveUtter = null;
+let cuePrefix = "", pendingCue = null;
+const voiceFor = uri => voices.find(v=> v.voiceURI === uri) || null;
+function utter(text, kind){
+  return new Promise(resolve=>{
+    if(!hasTTS || !text.trim()){ resolve(); return; }
+    const token = ++speechToken;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const v = voiceFor(kind === "cue" ? cfg.cueVoice : cfg.talkVoice); if(v) u.voice = v;
+    if(kind === "cue"){ u.rate = cfg.cueRate; u.pitch = 1.15; u.volume = 0.7; }
+    else { u.rate = 1; u.pitch = 1; u.volume = 1; }
+    liveUtter = u; speaking = kind;            // keep a reference: Chrome can drop events on collected utterances
+    let done = false;
+    const finish = ()=>{ if(done) return; done = true; clearTimeout(timer);
+      if(token === speechToken) speaking = null; resolve(); };
+    const timer = setTimeout(finish, Math.min(20000, 900 + text.length * 90 / u.rate));
+    u.onend = finish; u.onerror = finish;
+    speechSynthesis.speak(u);
+  });
+}
+const say = text => utter(text, "cue");      // instructions, guidance: spoken even when listen mode is off
+// Read an option aloud (listen mode only). A queued prefix ("Needs", or the letter just
+// typed) is spoken first. Cues wait for a message to finish rather than cutting it off.
+function cue(text){
+  if(!cfg.listen){ cuePrefix = ""; return; }
+  const full = [cuePrefix, text].filter(Boolean).join(". "); cuePrefix = "";
+  if(!full) return;
+  if(speaking === "msg"){ pendingCue = full; return; }
+  utter(full, "cue");
+}
+function sayMessage(text){
+  pendingCue = null; lastSaid = text; msgCount++;
+  utter(text, "msg").then(()=>{
+    const c = pendingCue; pendingCue = null;       // always cleared, or scanning would wait on it forever
+    if(c && speaking === null) utter(c, "cue"); });
+}
+
+/* ============ Sound effects (Web Audio, no files) ============ */
+let actx = null;
+function tone(freq, ms, { type="sine", gain=0.08, delay=0 } = {}){
+  if(!cfg.earcons || !actx) return;
+  const t0 = actx.currentTime + delay/1000, o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + ms/1000);
+  o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + ms/1000 + 0.02);
+}
+const ear = {
+  enter:  ()=>{ tone(660,90); tone(880,120,{delay:90}); },                  // went into a row
+  select: ()=>{ tone(880,90); tone(1175,160,{delay:80}); },                 // chose something
+  wrap:   ()=> tone(330,160,{type:"triangle"}),                             // back to the first option
+  lost:   ()=> tone(220,250,{type:"square",gain:0.04}),                     // face out of view
+  pause:  ()=>{ tone(660,120); tone(440,220,{delay:120}); },
+  ready:  ()=>{ tone(523,100); tone(659,100,{delay:100}); tone(784,170,{delay:200}); },
+};
+
+/* ============ View rendering ============
+   Tiles are real buttons with spoken labels (data-cue / aria-label), so a screen
+   reader, a mouse, a touch, and the scanner all reach the same commit(). */
+const board = document.getElementById("board");
+const saidEl = document.getElementById("said");
+const statusEl = document.getElementById("status");
+function makeKey(label, action, cls="", cueText=""){
+  const k = document.createElement("button"); k.type = "button";
+  k.className = "key " + cls; k.dataset.action = action;
+  k.innerHTML = `<span class="fill"></span><span class="glyph">${label}</span>`;
+  const spoken = cueText || k.textContent.trim();
+  k.dataset.cue = spoken; k.setAttribute("aria-label", spoken);
+  k.onclick = ()=>{ if(k.dataset.action) commit(k.dataset.action); };
+  return k;
+}
+const keyCue = k => k.dataset.cue || k.textContent.trim();
+/* Categories, with the caregiver's personal words mixed in: names become "Call …"
+   options under People; phrases, places and medicines make up "My words". */
+function category(name){
+  const base = MENU[name];
+  if(name === "people") return { ...base, items:[...base.items, ...splitList(profile.names).map(n=>["Call "+n, "call "+n])] };
+  if(name === "mine") return { title:"My words", assistant:false, items:[
+    ...phrases.map(p=>[p, p]),
+    ...splitList(profile.places).map(pl=>["Go to "+pl, "I want to go to "+pl+"."]),
+    ...splitList(profile.meds).map(m=>["My "+m, "It's about my "+m+"."]) ]};
+  return base;
+}
+// Long categories are split into pages, so the board fits the screen and a listener
+// isn't read a list of twenty. Up to 8 options fit on one page; longer lists get 6 per
+// page, leaving room for "Previous page", "Next page" and "Back".
+const perPage = n => n > 8 ? 6 : 8;
+let page = 0;
+function buildView(){
+  buildCount++;
+  board.innerHTML = "";
+  board.classList.toggle("kbd", view === "type");
+  cuePrefix = view === "menu" ? "Main menu" : view === "type" ? "Keyboard" : category(view).title;
+  if(view === "type"){ buildKeyboard(); return; }
+  let tiles = [];
+  if(view === "menu"){
+    if(saidEl.querySelector(".caret")) saidEl.textContent = "";   // leaving the keyboard
+    tiles = [["Home &amp; devices","go:home","cat","Home and devices"],["Ask","go:ask","cat"],
+             ["Needs","go:needs","cat"],["People","go:people","cat"],["Talk","go:talk","cat"],
+             ...(category("mine").items.length ? [["&#9733; My words","go:mine","cat","My words"]] : []),
+             ["&#9000; Type a message","go:type","cat type","Type a message"],
+             ["&#8635; Say it again","repeat","back","Say it again"]];
+  } else {
+    const cat = category(view), size = perPage(cat.items.length), pages = Math.max(1, Math.ceil(cat.items.length / size));
+    page = Math.min(page, pages - 1);
+    if(pages > 1) cuePrefix += `, page ${page+1} of ${pages}`;
+    tiles = cat.items.map((it,i)=>[escapeHtml(it[0]), "cmd:"+view+":"+i, "", it[0]]).slice(page*size, (page+1)*size);
+    if(page > 0) tiles.push(["&#9666; Previous page", "prev", "back", "Previous page"]);
+    if(page < pages-1) tiles.push([`Next page &#9656; <small>(${page+2} of ${pages})</small>`, "more", "back", "Next page"]);
+    tiles.push(["← Back","back","back","Back"]);
+  }
+  for(let i=0;i<tiles.length;i+=2){
+    const row = document.createElement("div"); row.className = "row";
+    tiles.slice(i,i+2).forEach(([lbl,act,cls,c])=> row.appendChild(makeKey(lbl,act,cls,c)));
+    board.appendChild(row);
+  }
+  afterBuild();
+}
+function afterBuild(){
+  keys = [...board.querySelectorAll(".key")];
+  state.focusKey = null; state.dwellElapsed = 0;
+  scan.level=0; scan.rowIdx=0; scan.colIdx=0; scan.passes=0; scan.cycles=0;
+  if(cfg.scanning && !scan.paused) highlightScan();
+}
+
+/* ============ Keyboard view ============
+   Rows: 3 suggestion chips, the letters, then actions. By ear, a row is announced
+   ("Letters A to L"), then each key in it. Each change is echoed back: the letter
+   typed, the word chosen, "deleted T". */
+let typed = "";
+let chips = [];
+function buildKeyboard(){
+  const addRow = (items, rowCue)=>{ const row=document.createElement("div"); row.className="row"; row.dataset.cue = rowCue;
+    items.forEach(([g,a,c,s])=> row.appendChild(makeKey(g,a,c,s))); board.appendChild(row); return row; };
+  chips = [...addRow([["","","pred"],["","","pred"],["","","pred"]], "suggestions").children];
+  ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"].forEach(r=> addRow([...r].map(L=>[L,"char:"+L,""]), `Letters ${r[0]} to ${r.at(-1)}`));
+  // Back sits on the left: the camera preview covers the bottom-right corner.
+  addRow([["&#8592; Back","back","act back","Back"],["SPACE","space","act","Space"],["&#9003; DELETE","backspace","act","Delete"],
+          ["&#128264; SPEAK","speak","act speak","Speak"],["&#128066; READ BACK","read","act","Read back"],
+          ["CLEAR","clear","act danger","Clear"]], "Actions");
+  renderTyped(); updateSuggestions(); afterBuild();
+}
+function renderTyped(){
+  saidEl.innerHTML = typed ? escapeHtml(typed) + '<span class="caret" aria-hidden="true">|</span>'
+    : '<span class="hint">Type a message — suggestions come first</span><span class="caret" aria-hidden="true">|</span>';
+}
+function escapeHtml(s){ return s.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+function currentWord(){ return typed.slice(typed.lastIndexOf(" ") + 1); }
+function lastWord(){ const t = typed.trimEnd(); return t.slice(t.lastIndexOf(" ") + 1).toLowerCase(); }
+function updateSuggestions(){
+  const out = [];
+  const add = (label, action)=>{ if(out.length < 3 && !out.some(o=>o.label.toLowerCase()===label.toLowerCase())) out.push({label, action}); };
+  const soFar = typed.trim().toLowerCase(), w = currentWord().toLowerCase();
+  if(!soFar) phrases.slice(0,2).forEach(p=> add(p, "phrase:"+phrases.indexOf(p)));
+  else if(soFar.length >= 2) phrases.forEach((p,i)=>{ const pl = p.toLowerCase();
+    if(pl.startsWith(soFar) && pl !== soFar) add(p, "phrase:"+i); });
+  if(w) trie.suggest(w, 3).forEach(s=> add(s, "predict:"+s));
+  else (soFar ? (BIGRAMS[lastWord()] || []) : STARTERS).forEach(s=> add(s, "predict:"+s));
+  chips.forEach((c,i)=>{ const s = out[i];
+    c.dataset.action = s ? s.action : "";
+    c.dataset.cue = s ? s.label : ""; c.setAttribute("aria-label", s ? s.label : "");
+    c.querySelector(".glyph").textContent = s ? (s.action.startsWith("phrase:") ? "💬 " : "") + s.label : "";
+    c.style.visibility = s ? "visible" : "hidden"; });
+}
+function typeAction(action){
+  if(action.startsWith("char:")){ const L = action.slice(5); typed += L.toLowerCase(); cuePrefix = L; }
+  else if(action.startsWith("predict:")){ const word = action.slice(8), parts = typed.split(" ");
+    parts[parts.length-1] = word; typed = parts.join(" ") + " "; cuePrefix = word; }
+  else if(action.startsWith("phrase:")){ typed = phrases[+action.slice(7)] + " "; cuePrefix = "Added: " + typed; }
+  else if(action === "space"){ typed += " "; cuePrefix = "Space"; }
+  else if(action === "backspace"){ const ch = typed.slice(-1); typed = typed.slice(0,-1);
+    cuePrefix = !ch ? "Nothing to delete" : ch === " " ? "Deleted space" : "Deleted " + ch.toUpperCase(); }
+  else if(action === "clear"){ typed = ""; cuePrefix = "Cleared"; }
+  else if(action === "speak"){ if(typed.trim()){ sayMessage(typed); learnFrom(typed); } else cuePrefix = "Nothing to speak yet"; }
+  else if(action === "read"){ const msg = typed.trim() ? "Your message: " + typed : "Nothing typed yet";
+    if(cfg.listen) cuePrefix = msg; else say(msg); }
+  renderTyped(); updateSuggestions();
+}
+
+/* ============ Speaking ============ */
+function speakCommand(cat, idx){
+  const c = category(cat), it = c.items[idx];
+  const prefix = c.assistant ? WAKE[cfg.wake] : "";
+  const text = (prefix ? prefix + " " : "") + it[1];
+  sayMessage(text); saidEl.textContent = "🔊 " + text;
+}
+function commit(action){
+  if(!action) return;
+  const now = performance.now(); if (now - state.lastCommit < 500) return; state.lastCommit = now;
+  if(action.startsWith("go:")){ view = action.slice(3); page = 0; buildView(); }
+  else if(action === "back"){ view = "menu"; page = 0; buildView(); }
+  else if(action === "more"){ page++; buildView(); }
+  else if(action === "prev"){ page = Math.max(0, page - 1); buildView(); }
+  else if(action === "repeat"){ if(lastSaid){ sayMessage(lastSaid); saidEl.textContent = "🔊 " + lastSaid; } else cuePrefix = "Nothing said yet"; }
+  else if(action.startsWith("cmd:")){ const [,cat,idx] = action.split(":"); speakCommand(cat, +idx); }
+  else if(view === "type") typeAction(action);
+  state.dwellElapsed = -400;
+  if(!cfg.scanning && cuePrefix) cue("");      // pointer mode: say the echo now (scanning says it with the next option)
+}
+// Escape: one step back — the previous page of a category, else the main menu.
+function goBack(){
+  if(view === "menu") return;
+  commit(view !== "type" && page > 0 ? "prev" : "back");
+}
+
+/* ============ Camera + model ============ */
+const video = document.getElementById("cam");
+async function ensureCamera(){
+  if(state.running) return true;
+  statusEl.textContent = "Starting camera…";
+  const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user" } });
+  video.srcObject = stream; video.classList.remove("hidden"); await video.play();
+  statusEl.textContent = "Loading face model…";
+  const fileset = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10/wasm");
+  state.landmarker = await FaceLandmarker.createFromOptions(fileset, {
+    baseOptions:{ modelAssetPath:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate:"GPU" },
+    runningMode:"VIDEO", numFaces:1, outputFaceBlendshapes:true });
+  state.running = true; face.lostAt = performance.now();
+  requestAnimationFrame(loop);
+  return true;
+}
+
+/* ============ Starting without sight ============
+   Any key, or a tap anywhere on the start screen, starts. Everything after that is
+   spoken: the camera, finding the face, setting up the switch, then the menu. */
+let started = false, live = false;   // live: start-up talk is done and the board is in use
+const sleep = ms => new Promise(r=> setTimeout(r, ms));
+async function start(welcomed=false){
+  if(started) return; started = true;
+  try{ actx = new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); }catch{}
+  const startErr = document.getElementById("startErr");
+  if(!welcomed) await say("Welcome to SpeakEasy.");   // the first speak() runs inside the key/tap, which iOS requires
+  if(cameraNeeded()){
+    try{ await ensureCamera(); }
+    catch(e){
+      if(cfg.scanning){        // no camera: keep going with a key or switch instead
+        cfg.scanSwitch = "keys";
+        await say("I couldn't start the camera, so I'll use a key or switch instead.");
+      } else {
+        startErr.classList.remove("hidden");
+        startErr.textContent = "Couldn't start: " + e.message + " — allow camera access, and run from a web address or localhost (not a file).";
+        statusEl.textContent = "Camera error";
+        say("I couldn't start the camera. Please ask someone to allow camera access."); started = false; return;
+      }
+    }
+  }
+  document.getElementById("startPanel").classList.add("hidden");
+  if(cfg.scanning && faceSwitchInUse()){
+    await waitForFace(15000);
+    for(const kind of new Set([cfg.scanSwitch, cfg.switchMode === "two" ? cfg.stepSwitch : "keys"]))
+      if(isFace(kind) && !cfg.cal[kind] && face.seen) await calibrate(kind);
+  }
+  if(cfg.scanning) await say(instructions());
+  ear.ready();
+  live = true;
+  applyMode();
+}
+function instructions(){
+  if(cfg.switchMode !== "two") return `When you hear what you want, ${GESTURE[cfg.scanSwitch]}.`;
+  const move = cfg.stepSwitch === "keys" ? "press Space" : GESTURE[cfg.stepSwitch];
+  const pick = cfg.scanSwitch === "keys" ? "press Enter" : GESTURE[cfg.scanSwitch];
+  return `To move to the next option, ${move}. To choose it, ${pick}.`;
+}
+async function waitForFace(ms){
+  const end = performance.now() + ms;
+  while(!face.seen && performance.now() < end) await sleep(200);
+  for(let i = 0; i < 30 && speaking; i++) await sleep(100);   // let "Face found" finish
+}
+
+/* ============ Camera guidance by sound ============
+   Nobody can see the preview, so the app says when the face is lost or off-centre.
+   Landmark x is in raw camera coordinates (not mirrored): a face near x=0 is on the
+   person's right, so they should move to their left. */
+const face = { seen:false, lostAt:0, lostSpokenAt:-1e9, beepAt:0, announcedLost:false, badSince:0, guideAt:-1e9 };
+function guideFace(lm, ts){
+  const voiceOK = faceNeededNow() && !calibrating && speaking !== "msg" && !panelOpen();
+  if(!lm){
+    if(face.seen){ face.seen = false; face.lostAt = ts; }
+    if(ts - face.lostAt > 1500 && faceNeededNow()){
+      if(voiceOK && (!face.announcedLost || ts - face.lostSpokenAt > 12000)){
+        face.announcedLost = true; face.lostSpokenAt = ts;
+        if(cfg.guide) say("I can't see your face. Move in front of the camera.");
+      }
+      if(!calibrating && ts - face.beepAt > 2500){ face.beepAt = ts; ear.lost(); }
+      statusEl.textContent = "Paused — face not in view";
+    }
+    return;
+  }
+  if(!face.seen){ face.seen = true; if(face.announcedLost){ face.announcedLost = false; onFaceFound(); } }
+  const nose = lm[1], width = Math.abs(lm[454].x - lm[234].x);
+  let hint = "";
+  if(width < 0.16) hint = "Come a little closer to the camera.";
+  else if(width > 0.6) hint = "Move back a little from the camera.";
+  else if(nose.x < 0.28) hint = "Move a little to your left.";
+  else if(nose.x > 0.72) hint = "Move a little to your right.";
+  else if(nose.y < 0.25) hint = "You're near the top of the camera view. Move down a little.";
+  else if(nose.y > 0.75) hint = "You're near the bottom of the camera view. Move up a little.";
+  if(!hint){ face.badSince = 0; return; }
+  if(!face.badSince) face.badSince = ts;
+  if(cfg.guide && voiceOK && speaking === null && ts - face.badSince > 2000 && ts - face.guideAt > 8000){
+    face.guideAt = ts; say(hint); }
+}
+const faceNeededNow = ()=> state.running && cameraNeeded();
+function onFaceFound(){
+  ear.ready(); setStatus();
+  if(calibrating) return;
+  if(live && cfg.scanning && cfg.listen && !scan.paused){ cuePrefix = "Face found"; highlightScan(); }
+  else if(cfg.guide) say("Face found.");
+}
+
+/* ============ Face switches ============ */
+function scoreFor(cats, kind){
+  const get = n => (cats.find(c=>c.categoryName===n)?.score) || 0;
+  if(kind==="blink") return (get("eyeBlinkLeft") + get("eyeBlinkRight"))/2;
+  if(kind==="brow")  return Math.max(get("browInnerUp"), (get("browOuterUpLeft") + get("browOuterUpRight"))/2);
+  if(kind==="mouth") return get("jawOpen");
+  return 0;
+}
+const thresholds = kind => cfg.cal[kind] || { on:0.5, off:0.3 };
+const det = { select:{latch:false, held:0}, step:{latch:false, held:0}, pblink:{latch:false, held:0} };
+// Fires once per gesture: score must pass `on` for a moment, then drop below `off` before it can fire again.
+function detect(d, cats, kind, dt, onFire){
+  const s = scoreFor(cats, kind), th = thresholds(kind), HOLD = kind === "blink" ? 300 : 160;
+  if(s > th.on){ if(!d.latch){ d.held += dt; if(d.held > HOLD){ d.latch = true; onFire(); } } }
+  else if(s < th.off){ d.latch = false; d.held = 0; }
+}
+
+/* Spoken calibration: measure the face at rest, then doing the gesture, and set the
+   switch threshold between the two. Works for faces where the fixed 0.5 doesn't. */
+let calibrating = false;
+async function sample(kind, ms){
+  const out = [], end = performance.now() + ms;
+  while(performance.now() < end){ await sleep(50); if(state.lastCats) out.push(scoreFor(state.lastCats, kind)); }
+  return out;
+}
+const pct = (a, p)=>{ if(!a.length) return null; const s = [...a].sort((x,y)=>x-y); return s[Math.min(s.length-1, Math.floor(p*s.length))]; };
+async function calibrate(kind){
+  if(!isFace(kind) || !state.running) return false;
+  calibrating = true; clearFocusAll(); statusEl.innerHTML = "<b>Setting up switch</b> · follow the voice";
+  try{
+    for(let attempt = 0; attempt < 2; attempt++){
+      await say(`Let's set up your switch. Relax your face and keep still.`);
+      const rest = await sample(kind, 2000);
+      await say(`Now ${GESTURE[kind]}, and hold until the beep.`);
+      const act = await sample(kind, 2500);
+      ear.select();
+      const base = pct(rest, 0.9), peak = pct(act, 0.8);
+      if(base === null || peak === null){ await say("I couldn't see your face. Let's try again."); await waitForFace(8000); continue; }
+      if(peak - base < 0.15){ await say("I couldn't tell the difference. Let's try once more, a little stronger."); continue; }
+      cfg.cal[kind] = { on: base + 0.55*(peak - base), off: base + 0.3*(peak - base) }; saveCfg();
+      await say("Got it.");
+      return true;
+    }
+    await say("I'll use the standard setting for now. You can try again from Settings.");
+    return false;
+  } finally {
+    calibrating = false;
+    for(const d of Object.values(det)){ d.latch = true; d.held = 0; }   // relax before the first select counts
+    setStatus();
+  }
+}
+
+/* ============ Main loop ============ */
+const cursorEl = document.getElementById("cursor"); const ringEl = document.getElementById("ring");
+function loop(){
+  if(!state.running) return;
+  const ts = performance.now(); const dt = state.lastTs ? ts - state.lastTs : 16; state.lastTs = ts;
+  const res = state.landmarker.detectForVideo(video, ts);
+  const lm = res.faceLandmarks?.length ? res.faceLandmarks[0] : null;
+  const cats = lm && res.faceBlendshapes?.length ? res.faceBlendshapes[0].categories : null;
+  state.lastCats = cats;
+  guideFace(lm, ts);
+  if(lm){
+    if(!cfg.scanning) updatePointer(lm[1]);
+    if(cats && !calibrating && !panelOpen()){
+      if(!cfg.scanning && cfg.blink) detect(det.pblink, cats, "blink", dt, ()=>{ if(state.focusKey) commit(state.focusKey.dataset.action); });
+      if(cfg.scanning){
+        if(isFace(cfg.scanSwitch)) detect(det.select, cats, cfg.scanSwitch, dt, onSelectSwitch);
+        if(cfg.switchMode === "two" && isFace(cfg.stepSwitch) && cfg.stepSwitch !== cfg.scanSwitch)
+          detect(det.step, cats, cfg.stepSwitch, dt, onStepSwitch);
+      }
+    }
+    if(!cfg.scanning) updateDwell(dt);
+  }
+  requestAnimationFrame(loop);
+}
+function updatePointer(nose){
+  const px = 1 - nose.x, py = nose.y;
+  let cx = 0.5 + (px - state.centerX) * cfg.sens, cy = 0.5 + (py - state.centerY) * (cfg.sens * 1.25);
+  cx = Math.min(1, Math.max(0, cx)); cy = Math.min(1, Math.max(0, cy));
+  state.smoothX += (cx - state.smoothX) * 0.35; state.smoothY += (cy - state.smoothY) * 0.35;
+  cursorEl.style.left = state.smoothX * window.innerWidth + "px";
+  cursorEl.style.top  = state.smoothY * window.innerHeight + "px";
+}
+function keyUnderCursor(){
+  const x = state.smoothX * window.innerWidth, y = state.smoothY * window.innerHeight;
+  for (const k of keys){ if (k.dataset.action === "") continue;
+    const r = k.getBoundingClientRect(); if (x>=r.left && x<=r.right && y>=r.top && y<=r.bottom) return k; }
+  return null;
+}
+function updateDwell(dt){
+  const k = keyUnderCursor();
+  if (k !== state.focusKey){
+    if (state.focusKey){ state.focusKey.classList.remove("focus"); setFill(state.focusKey,0); }
+    state.focusKey = k; state.dwellElapsed = 0;
+    if (k){ k.classList.add("focus"); cue(keyCue(k)); }
+  }
+  if (!k){ ringEl.style.strokeDashoffset = 100; return; }
+  state.dwellElapsed += dt;
+  const prog = Math.max(0, Math.min(1, state.dwellElapsed / cfg.dwellMs));
+  ringEl.style.strokeDashoffset = 100 - prog*100; setFill(k, prog*100);
+  if (state.dwellElapsed >= cfg.dwellMs){ ear.select(); commit(k.dataset.action); setFill(k,0); ringEl.style.strokeDashoffset = 100; }
+}
+function setFill(k, pct){ k.querySelector(".fill").style.height = pct + "%"; }
+
+/* ============ Scanning ============
+   By ear, menus scan one option at a time (rows mean nothing when you can't see
+   them); the keyboard keeps row-then-key. One-switch: the scan moves on by itself,
+   waiting for each spoken option to finish. Two-switch: one switch moves, one
+   selects. After three silent rounds the scan pauses instead of talking forever.
+   After a selection nothing is rushed: once a message is spoken the scan rests
+   (until the switch, or a set time — see "After a message is spoken"), and after
+   any other choice the first option is held a little longer. */
+const scan = { level:0, rowIdx:0, colIdx:0, passes:0, cycles:0, paused:false,
+  rest:0, restAccum:0, restToned:false, extra:0 };   // rest: ms to wait after a message (Infinity = until the switch)
+const MAX_CYCLES = 3, SETTLE_MS = 1500;
+let scanRAF=null, scanLast=0, scanAccum=0, lastSelect=0, lastStep=0;   // each switch debounces on its own
+function clearFocusAll(){ keys.forEach(k=>{ k.classList.remove("focus"); setFill(k,0); }); }
+function getRows(){
+  const rows = [...board.querySelectorAll(".row")]
+    .map(r=>[...r.querySelectorAll(".key")].filter(k=>k.dataset.action)).filter(r=>r.length);  // skip empty suggestion chips
+  return cfg.listen && view !== "type" ? rows.flat().map(k=>[k]) : rows;
+}
+function rowCue(row){
+  const name = row[0].parentElement.dataset.cue;
+  if(name === "suggestions") return "Suggestions: " + row.map(keyCue).join(", ");
+  return name || row.map(keyCue).join(", ");
+}
+function highlightScan(){
+  clearFocusAll(); const rows=getRows(); if(!rows.length) return;
+  scan.rowIdx = Math.min(scan.rowIdx, rows.length-1);
+  const row = rows[scan.rowIdx];
+  let text;
+  if(scan.level===0){ row.forEach(k=>k.classList.add("focus")); text = row.length === 1 ? keyCue(row[0]) : rowCue(row); }
+  else { scan.colIdx=Math.min(scan.colIdx,row.length-1); row[scan.colIdx].classList.add("focus"); text = keyCue(row[scan.colIdx]); }
+  scanAccum = 0;
+  if(!panelOpen() && !calibrating) cue(text);
+}
+function advanceScan(manual=false){
+  const rows=getRows(); if(!rows.length) return;
+  scan.extra = 0;
+  if(scan.level===0){
+    scan.rowIdx=(scan.rowIdx+1)%rows.length;
+    if(scan.rowIdx===0){ ear.wrap(); if(!manual && ++scan.cycles >= MAX_CYCLES){ pauseScan(); return; } }
+  } else { const row=rows[scan.rowIdx]; scan.colIdx++;
+    if(scan.colIdx>=row.length){ scan.colIdx=0; scan.passes++; ear.wrap();
+      if(scan.passes>=2){ scan.level=0; scan.passes=0; cuePrefix = "Leaving row"; } } }
+  highlightScan();
+}
+function switchPress(){
+  const now=performance.now(); if(now-lastSelect<450) return; lastSelect=now;
+  const rows=getRows(); if(!rows.length) return;
+  scan.cycles = 0;
+  const before = buildCount, msgsBefore = msgCount;
+  if(scan.level===0){
+    const row = rows[scan.rowIdx];
+    if(row.length > 1){ scan.level=1; scan.colIdx=0; scan.passes=0; ear.enter(); highlightScan(); return; }
+    ear.select(); commit(row[0].dataset.action);    // a single option: choose it directly
+  } else {
+    const row=rows[scan.rowIdx]; ear.select(); commit(row[Math.min(scan.colIdx,row.length-1)].dataset.action);
+  }
+  if(buildCount === before){ scan.level=0; scan.passes=0; scan.rowIdx=0;   // a new view already started its own scan
+    if(msgCount !== msgsBefore){ restAfterMessage(); return; }
+    highlightScan(); }
+  scan.extra = SETTLE_MS;
+}
+// After a message, go quiet: no options are read until the person is ready.
+function restAfterMessage(){
+  clearFocusAll(); cuePrefix = "";
+  scan.paused = true; scan.restAccum = 0; scan.restToned = false;
+  scan.rest = cfg.afterMsg === "wait" ? Infinity : +cfg.afterMsg;
+  const how = cfg.scanSwitch === "keys" ? "press a key" : GESTURE[cfg.scanSwitch];
+  statusEl.innerHTML = scan.rest === Infinity ? `<b>Ready when you are</b> · ${how} to go on` : "<b>Resting</b> · scanning starts again shortly";
+}
+function onSelectSwitch(){
+  if(panelOpen() || calibrating) return;
+  if(scan.paused){ resumeScan(); return; }
+  switchPress();
+}
+function onStepSwitch(){
+  if(panelOpen() || calibrating) return;
+  const now=performance.now(); if(now-lastStep<250) return; lastStep=now;
+  if(scan.paused){ resumeScan(); return; }
+  advanceScan(true);
+}
+function pauseScan(){
+  scan.paused = true; scan.rest = 0; clearFocusAll(); ear.pause();
+  const how = cfg.scanSwitch === "keys" ? "press any key" : GESTURE[cfg.scanSwitch];
+  if(cfg.listen) cue(`Paused. ${how[0].toUpperCase() + how.slice(1)} to start again.`);
+  statusEl.innerHTML = "<b>Paused</b> · " + how + " to start again";
+}
+function resumeScan(){
+  scan.paused = false; scan.rest = 0; scan.cycles = 0; scan.level = 0; scan.rowIdx = 0; scan.colIdx = 0;
+  ear.ready(); setStatus(); highlightScan(); scan.extra = SETTLE_MS;
+}
+// Scanning waits while settings are open, during calibration, while the face (the
+// switch) is out of view, and while anything is being spoken.
+function holding(){
+  return panelOpen() || calibrating || speaking !== null || pendingCue !== null ||
+    (state.running && faceSwitchInUse() && !face.seen && performance.now() - face.lostAt > 1500);
+}
+function scanTick(now){ if(!cfg.scanning){ scanRAF=null; return; }
+  const dt=now-scanLast; scanLast=now;
+  if(scan.paused && scan.rest && !holding()){        // resting after a message; the clock starts once it has been spoken
+    if(!scan.restToned){ scan.restToned = true; tone(523,160,{gain:0.05}); }   // soft "done" so silence isn't mistaken for a freeze
+    scan.restAccum += dt; if(scan.restAccum >= scan.rest) resumeScan();
+  }
+  if(cfg.switchMode === "one" && !scan.paused && !holding()){
+    scanAccum+=dt; if(scanAccum>=cfg.scanMs + scan.extra){ scanAccum=0; advanceScan(); } }
+  scanRAF=requestAnimationFrame(scanTick); }
+function startScan(){
+  cfg.scanning=true; scan.level=0; scan.rowIdx=0; scan.colIdx=0; scan.passes=0; scan.cycles=0; scan.paused=false; scan.rest=0; scan.extra=0;
+  cursorEl.style.display="none";
+  scanLast=performance.now(); scanAccum=0; setStatus(); highlightScan();
+  if(!scanRAF) scanRAF=requestAnimationFrame(scanTick);
+}
+function stopScan(){
+  cfg.scanning=false; if(scanRAF){ cancelAnimationFrame(scanRAF); scanRAF=null; } clearFocusAll();
+  if(state.running) cursorEl.style.display="block";
+  setStatus();
+}
+function setStatus(){
+  if(!started) return;
+  if(!cfg.scanning){ statusEl.innerHTML = state.running ? "<b>Tracking</b> · move your head to point" : "Pointer mode needs the camera"; return; }
+  const sel = cfg.scanSwitch === "keys" ? "press a key" : GESTURE[cfg.scanSwitch];
+  statusEl.innerHTML = cfg.switchMode === "two"
+    ? `<b>Two-switch scanning</b> · ${cfg.stepSwitch === "keys" ? "Space" : GESTURE[cfg.stepSwitch]} to move, ${cfg.scanSwitch === "keys" ? "Enter" : sel} to select`
+    : `<b>Scanning</b> · ${sel} to select`;
+}
+function applyMode(){ if(cfg.scanning) startScan(); else stopScan(); }
+
+/* ============ Controls ============ */
+const $ = id => document.getElementById(id);
+const startPanel = $("startPanel"), settingsPanel = $("settingsPanel");
+const panelOpen = ()=> !!document.querySelector(".panel:not(.hidden)");
+$("startBtn").onclick = e=>{ e.stopPropagation(); start(); };
+startPanel.onclick = ()=> start();
+$("calibBtn").onclick = recenter;
+$("recalibBtn").onclick = recenter;
+$("settingsBtn").onclick = ()=>{ settingsPanel.classList.remove("hidden"); if(hasTTS) speechSynthesis.cancel(); };
+// Blur on close: Safari doesn't focus a clicked button, so a checkbox could keep focus.
+$("closeSettings").onclick = async ()=>{
+  settingsPanel.classList.add("hidden"); document.activeElement?.blur();
+  if(!started) return;
+  if(cameraNeeded() && !state.running){
+    try{ await ensureCamera(); } catch{ say("I couldn't start the camera."); }
+  }
+  if(view !== "type"){ if(view === "mine" && !category("mine").items.length) view = "menu"; buildView(); }  // show new personal words
+  applyMode();
+};
+function recenter(){
+  const res = state.landmarker?.detectForVideo(video, performance.now());
+  if (res?.faceLandmarks?.length){ const nose = res.faceLandmarks[0][1];
+    state.centerX = 1 - nose.x; state.centerY = nose.y;
+    if(!cfg.scanning) statusEl.innerHTML = "<b>Recentered</b> · look straight ahead"; }
+}
+$("calibBtnSettings").onclick = async ()=>{
+  const kinds = [cfg.scanSwitch, cfg.switchMode === "two" ? cfg.stepSwitch : ""].filter(isFace);
+  if(!kinds.length){ say("Your switches are keys, so there's nothing to set up."); return; }
+  try{ await ensureCamera(); } catch{ say("I couldn't start the camera."); return; }
+  settingsPanel.classList.add("hidden");
+  await waitForFace(15000);
+  for(const kind of new Set(kinds)) await calibrate(kind);
+  applyMode();
+};
+
+// Each setting saves on change. Settings that change scanning take effect on "Done".
+function bindCheck(id, key, after){ const el=$(id); el.checked=!!cfg[key];
+  el.onchange=()=>{ cfg[key]=el.checked; saveCfg(); after?.(); }; }
+function bindSelect(id, key, after){ const el=$(id); el.value=cfg[key];
+  el.onchange=()=>{ cfg[key]=el.value; saveCfg(); after?.(); }; }
+function bindRange(id, key, fmt, after){ const el=$(id), out=$(id+"Val"); const show=()=> out.textContent=fmt(cfg[key]);
+  el.value=cfg[key]; show(); el.oninput=()=>{ cfg[key]=+el.value; show(); saveCfg(); after?.(); }; }
+const secs = v => (v/1000).toFixed(1)+"s";
+bindCheck("listenChk", "listen");
+bindCheck("earChk", "earcons");
+bindCheck("guideChk", "guide");
+bindCheck("scanChk", "scanning");
+bindCheck("blinkChk", "blink");
+bindCheck("hcChk", "hc", ()=> document.body.classList.toggle("hc", cfg.hc));
+document.body.classList.toggle("hc", cfg.hc);
+bindSelect("modeSel", "switchMode");
+bindSelect("scanSwitch", "scanSwitch");
+bindSelect("stepSwitch", "stepSwitch");
+bindSelect("wakeSel", "wake");
+bindSelect("afterMsgSel", "afterMsg");
+bindSelect("cueVoiceSel", "cueVoice", ()=> say("This is the cue voice. Home and devices. Needs."));
+bindSelect("talkVoiceSel", "talkVoice", ()=> utter("This is the speaking voice.", "msg"));
+bindRange("cueRate", "cueRate", v=> v.toFixed(1)+"×", ()=>{ clearTimeout(bindRange.t); bindRange.t = setTimeout(()=> say("Cue speed"), 250); });
+bindRange("scanRange", "scanMs", secs);
+bindRange("dwellRange", "dwellMs", secs);
+bindRange("sensRange", "sens", v=> v.toFixed(1)+"×");
+
+function fillVoices(){
+  if(!hasTTS) return;
+  voices = speechSynthesis.getVoices();
+  const lang = (navigator.language || "en").slice(0,2);
+  const sorted = [...voices].sort((a,b)=> (b.lang.startsWith(lang)) - (a.lang.startsWith(lang)) || a.name.localeCompare(b.name));
+  for(const [id, key] of [["cueVoiceSel","cueVoice"], ["talkVoiceSel","talkVoice"]]){
+    const el = $(id);
+    el.innerHTML = '<option value="">System default</option>' +
+      sorted.map(v=> `<option value="${v.voiceURI.replace(/"/g,"&quot;")}">${escapeHtml(v.name)} (${v.lang})</option>`).join("");
+    el.value = voiceFor(cfg[key]) ? cfg[key] : "";
+  }
+}
+if(hasTTS){ fillVoices(); speechSynthesis.onvoiceschanged = fillVoices; }
+
+// Keys. Before starting: any key starts. While scanning: one-switch, any key selects;
+// two-switch, Space/arrows move and Enter selects. Escape goes back. With scanning off,
+// keys are left alone so Tab / Enter and screen readers work on the tile buttons.
+const IGNORED = new Set(["Shift","Control","Alt","Meta","CapsLock","Tab","Fn"]);
+window.addEventListener("keydown", e=>{
+  if(IGNORED.has(e.key) || e.metaKey || e.ctrlKey || e.altKey) return;
+  if(!started){ if(!settingsPanel.classList.contains("hidden")) return; e.preventDefault(); start(); return; }
+  if(panelOpen() || !cfg.scanning) return;
+  e.preventDefault();
+  if(e.repeat) return;
+  if(e.key === "Escape"){ if(view !== "menu"){ scan.paused = false; goBack(); } return; }
+  if(cfg.switchMode === "two"){
+    if(e.key === "Enter") onSelectSwitch();
+    else if([" ","ArrowRight","ArrowDown","ArrowLeft","ArrowUp"].includes(e.key)) onStepSwitch();
+  } else onSelectSwitch();
+});
+
+// Personal words: fill the fields from the saved profile, and save on every edit.
+const pf = { names:"pfNames", meds:"pfMeds", places:"pfPlaces", phrases:"pfPhrases" };
+for(const [field,id] of Object.entries(pf)){
+  const el = $(id); el.value = profile[field] || "";
+  el.oninput = ()=>{ profile[field] = el.value; save(PROFILE_KEY, profile); buildTrie(); if(view==="type") updateSuggestions(); };
+}
+$("clearProfileBtn").onclick = ()=>{
+  if(!confirm("Remove all personal words, saved phrases, and typing history from this device?")) return;
+  profile = { names:"", meds:"", places:"", phrases:"" }; learned = {};
+  try{ localStorage.removeItem(LEARNED_KEY); }catch{}
+  save(PROFILE_KEY, profile);
+  Object.values(pf).forEach(id=> $(id).value = "");
+  buildTrie(); if(view==="type") updateSuggestions();
+};
+
+/* Browsers won't let a page speak until the first key press or tap, so normally the
+   start screen waits for one. On a device set up to allow it (Chrome started with
+   --autoplay-policy=no-user-gesture-required — see the README), the welcome plays as
+   the page opens and, if the camera was allowed on an earlier visit, it starts by
+   itself: a face-switch user never has to touch anything. */
+async function tryAutoStart(){
+  if(!hasTTS) return;
+  const allowed = await new Promise(resolve=>{
+    const u = new SpeechSynthesisUtterance("Welcome to SpeakEasy."); liveUtter = u;
+    const v = voiceFor(cfg.cueVoice); if(v) u.voice = v;
+    u.rate = cfg.cueRate; u.pitch = 1.15; u.volume = 0.7;
+    const t = setTimeout(()=>{ speechSynthesis.cancel(); resolve(false); }, 1500);   // never started: treat as blocked
+    u.onstart = ()=>{ clearTimeout(t); u.onend = ()=> resolve(true); };
+    u.onerror = ()=>{ clearTimeout(t); resolve(false); };                           // "not-allowed" before a gesture
+    speechSynthesis.speak(u);
+  });
+  if(!allowed || started) return;
+  let cameraOK = !cameraNeeded();
+  try{ cameraOK ||= (await navigator.permissions.query({ name:"camera" })).state === "granted"; }catch{}
+  if(cameraOK) start(true);
+  else await say("Press any key, or tap the screen, to start.");
+}
+
+buildView();  // draw the main menu at load (its cue waits for start)
+tryAutoStart();
+</script>
+</body>
+</html>

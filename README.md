@@ -13,7 +13,8 @@ _(fill this in once GitHub Pages is enabled — see below)_
 
 | | Version | What it adds |
 |---|---|---|
-| [`/v5`](v5/) | **v5 — command board (recommended)** | Speaks **whole commands in 1–2 selections** — smart-home control ("Alexa, turn on the AC"), urgent needs, and calls — for people for whom spelling is too slow. Selectable wake word (Alexa / Google / Siri) |
+| [`/v6`](v6/) | **v6 — listen mode (blind & low-vision)** | The v5 command board **by ear**: auditory scanning reads each option in a quick, quiet cue voice and speaks the chosen one in a full voice; earcons; spoken camera guidance ("move a little to your left") and a spoken switch calibration; one- or two-switch scanning with any key or Bluetooth switch (no camera needed); an **Ask** category whose answers the voice assistant speaks back; settings saved on the device |
+| [`/v5`](v5/) | **v5 — command board (recommended)** | Speaks **whole commands in 1–2 selections** — smart-home control ("Alexa, turn on the AC"), urgent needs, and calls — for people for whom spelling is too slow. Selectable wake word (Alexa / Google / Siri). A **Type a message** keyboard suggests the person's own names, medicines, places and phrases (entered by a caregiver in Settings, stored only on the device) and learns words they use |
 | [`/v4`](v4/) | **v4 — keyboard + phrases** | Free-text typing with word + next-word prediction and a quick phrase board (the spelling fallback) |
 | [`/v3`](v3/) | **v3 — scanning mode** | Row–column **scanning** with a selectable switch (eyebrow raise, mouth open, blink, or Space) |
 | [`/v2`](v2/) | **v2 — word prediction** | A prediction row (backed by a trie) suggests word completions |
@@ -23,6 +24,35 @@ _(fill this in once GitHub Pages is enabled — see below)_
 turn on the air conditioner"). A nearby Echo/Nest/HomePod hears it and acts — no cloud API, account,
 or internet link required, and nothing is uploaded. Edit the `MENU` list near the top of
 `v5/index.html` to customise commands and contact names.
+
+**Personal words (v5):** in Settings → *Personal words for typing*, a caregiver can enter names, medicines,
+places and favourite phrases. The keyboard suggests these first (e.g. "met" → "Metformin", "my m" → "My
+medicine is due."), and words the person speaks are ranked higher over time. Everything is kept in the
+browser's `localStorage` on that device; *Clear personal words & typing history* removes it.
+
+**Listen mode (v6):** built for blind and low-vision users. Start with any key or a tap anywhere; from
+then on everything is spoken. Menus scan one option at a time, each read aloud, and the scan waits for
+each option to finish before moving on. After three rounds with no selection it pauses until the switch
+is used. The keyboard announces rows ("Letters A to L"), echoes each letter, and has **Read back**. With a
+face switch, the app talks the person into camera view and calibrates the gesture to their face; with
+**Key or physical switch only** the camera isn't used at all. In two-switch setup Space/arrows move and Enter
+selects; Escape returns to the main menu. Tiles are real buttons with labels, so a screen reader works
+when scanning is off.
+
+**Starting v6 with no key press (dedicated device).** Browsers don't let a page speak until someone
+presses a key or taps it, so by default v6's start screen is silent until then. On a computer set aside
+for one person, a caregiver can set Chrome to allow it:
+
+1. Make a Chrome shortcut that opens SpeakEasy with sound allowed, e.g. on a Mac:
+   `open -na "Google Chrome" --args --autoplay-policy=no-user-gesture-required https://<your-username>.github.io/speakeasy-aac/v6/`
+   (on Windows, add `--autoplay-policy=no-user-gesture-required` to the shortcut's *Target*).
+2. Open it once and allow the camera.
+
+From then on v6 says "Welcome to SpeakEasy" as soon as it opens and starts scanning by itself. If the
+camera hasn't been allowed yet, it says "Press any key, or tap the screen, to start." Safari, iPhone and iPad
+have no such setting, so there the first key press or tap is still needed (VoiceOver reads the start button).
+
+Every version has an **All versions** button in the top bar that returns to the landing page.
 
 Each version is a single self-contained HTML file (`vN/index.html`). Later versions include
 everything from the earlier ones.
