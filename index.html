@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SpeakEasy — hands-free communication</title>
+<title>Relay — hands-free communication</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml" />
 <style>
   :root{
     --bg:#101418; --surface:#1a2028; --surface-2:#222b35; --line:#33404d;
@@ -13,7 +14,8 @@
   html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;}
   .wrap{max-width:720px;margin:0 auto;padding:56px 22px 72px;}
-  h1{font-size:34px;margin:0 0 6px;letter-spacing:.2px;}
+  h1{font-size:34px;margin:0 0 6px;letter-spacing:.2px;display:flex;align-items:center;gap:12px;}
+  h1 img{width:44px;height:44px;}
   .tag{color:var(--muted);font-size:17px;line-height:1.6;margin:0 0 34px;}
   .card{display:block;text-decoration:none;color:inherit;background:var(--surface);
     border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin-bottom:14px;
@@ -32,7 +34,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>SpeakEasy</h1>
+  <h1><img src="logo.svg" alt="" />Relay</h1>
   <p class="tag">A free app that lets people who can't use their hands or voice speak — just by moving
      their face in front of a camera. Everything runs on your device; no video is ever uploaded or saved.</p>
 

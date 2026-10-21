@@ -1,4 +1,6 @@
-# SpeakEasy — hands-free communication
+<img src="logo.svg" alt="Relay logo" width="96" />
+
+# Relay — hands-free communication
 
 A free, camera-based **AAC** (augmentative & alternative communication) web app. It lets a person
 who can't use their hands or voice compose text and speak it aloud using only a device's front
@@ -6,7 +8,7 @@ camera. All processing happens **on-device in the browser** — no video is ever
 
 Built for the **Congressional App Challenge 2026**.
 
-**Live site:** `https://<your-username>.github.io/speakeasy-aac/`
+**Live site:** `https://<your-username>.github.io/relay-aac/`
 _(fill this in once GitHub Pages is enabled — see below)_
 
 ## Versions
@@ -43,12 +45,12 @@ when scanning is off.
 presses a key or taps it, so by default v6's start screen is silent until then. On a computer set aside
 for one person, a caregiver can set Chrome to allow it:
 
-1. Make a Chrome shortcut that opens SpeakEasy with sound allowed, e.g. on a Mac:
-   `open -na "Google Chrome" --args --autoplay-policy=no-user-gesture-required https://<your-username>.github.io/speakeasy-aac/v6/`
+1. Make a Chrome shortcut that opens Relay with sound allowed, e.g. on a Mac:
+   `open -na "Google Chrome" --args --autoplay-policy=no-user-gesture-required https://<your-username>.github.io/relay-aac/v6/`
    (on Windows, add `--autoplay-policy=no-user-gesture-required` to the shortcut's *Target*).
 2. Open it once and allow the camera.
 
-From then on v6 says "Welcome to SpeakEasy" as soon as it opens and starts scanning by itself. If the
+From then on v6 says "Welcome to Relay" as soon as it opens and starts scanning by itself. If the
 camera hasn't been allowed yet, it says "Press any key, or tap the screen, to start." Safari, iPhone and iPad
 have no such setting, so there the first key press or tap is still needed (VoiceOver reads the start button).
 
@@ -80,12 +82,12 @@ python3 -m http.server
 
 ## Host on GitHub Pages
 
-1. Create a new GitHub repo named `speakeasy-aac` and upload the contents of this folder
+1. Create a new GitHub repo named `relay-aac` and upload the contents of this folder
    (or push with git).
 2. In the repo: **Settings → Pages**.
 3. Under **Build and deployment → Source**, choose **Deploy from a branch**.
 4. Branch: **main**, folder: **/ (root)**. Save.
-5. Wait ~1 minute; your site appears at `https://<your-username>.github.io/speakeasy-aac/`.
+5. Wait ~1 minute; your site appears at `https://<your-username>.github.io/relay-aac/`.
    Versions live at `/v1/`, `/v2/`, `/v3/`.
 
 (The included `.nojekyll` file tells Pages to serve the files as-is.)

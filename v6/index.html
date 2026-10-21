@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SpeakEasy — listen mode</title>
+<title>Relay — listen mode</title>
 <style>
   :root{
     --bg:#101418; --surface:#1a2028; --surface-2:#222b35; --line:#33404d;
@@ -91,8 +91,8 @@
 
 <div class="panel" id="startPanel">
   <div class="card" role="dialog" aria-labelledby="startTitle" aria-describedby="startDesc">
-    <h2 id="startTitle">SpeakEasy — listen mode</h2>
-    <p id="startDesc">For people who can’t see the screen. SpeakEasy reads each option aloud in a quick,
+    <h2 id="startTitle">Relay — listen mode</h2>
+    <p id="startDesc">For people who can’t see the screen. Relay reads each option aloud in a quick,
        quiet voice. When you hear the one you want, select it by raising your eyebrows, or with any key or
        switch, and it is spoken out loud: to a person, or to a nearby voice assistant (“Alexa, what time is it?”).
        Spoken instructions help you get in front of the camera and set up your switch. Everything runs on your device.</p>
@@ -192,10 +192,10 @@
 </div>
 
 <div class="bar">
-  <h1>SpeakEasy <span style="font-size:12px;font-weight:600;color:var(--muted);vertical-align:middle;">v6</span></h1>
+  <h1>Relay <span style="font-size:12px;font-weight:600;color:var(--muted);vertical-align:middle;">v6</span></h1>
   <span class="status" id="status">Ready</span>
   <div class="spacer"></div>
-  <a class="ctrl" href="../" title="Back to the list of all SpeakEasy versions">&#8962; All versions</a>
+  <a class="ctrl" href="../" title="Back to the list of all Relay versions">&#8962; All versions</a>
   <button class="ctrl" id="calibBtn">Recenter</button>
   <button class="ctrl" id="settingsBtn">Settings</button>
 </div>
@@ -572,7 +572,7 @@ async function start(welcomed=false){
   if(started) return; started = true;
   try{ actx = new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); }catch{}
   const startErr = document.getElementById("startErr");
-  if(!welcomed) await say("Welcome to SpeakEasy.");   // the first speak() runs inside the key/tap, which iOS requires
+  if(!welcomed) await say("Welcome to Relay.");   // the first speak() runs inside the key/tap, which iOS requires
   if(cameraNeeded()){
     try{ await ensureCamera(); }
     catch(e){
@@ -998,7 +998,7 @@ $("clearProfileBtn").onclick = ()=>{
 async function tryAutoStart(){
   if(!hasTTS) return;
   const allowed = await new Promise(resolve=>{
-    const u = new SpeechSynthesisUtterance("Welcome to SpeakEasy."); liveUtter = u;
+    const u = new SpeechSynthesisUtterance("Welcome to Relay."); liveUtter = u;
     const v = voiceFor(cfg.cueVoice); if(v) u.voice = v;
     u.rate = cfg.cueRate; u.pitch = 1.15; u.volume = 0.7;
     const t = setTimeout(()=>{ speechSynthesis.cancel(); resolve(false); }, 1500);   // never started: treat as blocked
